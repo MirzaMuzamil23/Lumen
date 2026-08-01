@@ -1,0 +1,262 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+:root {
+  /* --- Color tokens: deep ink-teal ground, burnished gold signature --- */
+  --ink: #0a1614;
+  --ink-surface: #101f1c;
+  --ink-surface-2: #142823;
+  --porcelain: #f2efe9;
+  --porcelain-muted: #9fb0aa;
+  --gold: #c9a227;
+  --gold-soft: #e2c25c;
+  --sage: #7c9885;
+  --border: rgba(242, 239, 233, 0.12);
+  --border-strong: rgba(242, 239, 233, 0.22);
+  --danger: #e0685a;
+
+  /* --- Type tokens --- */
+  --font-display: "Fraunces", serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --radius: 4px;
+  --max-width: 1180px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--ink);
+  color: var(--porcelain);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* --- Layout helpers --- */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.section {
+  padding: 96px 0;
+}
+
+.section-tight {
+  padding: 56px 0;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* --- Signature element: hairline growth-arc, echoed across hero + dividers --- */
+.arc-mark {
+  position: relative;
+}
+
+.arc-mark svg {
+  display: block;
+}
+
+/* --- Typography scale --- */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+h1 { font-size: clamp(40px, 6vw, 68px); font-weight: 500; }
+h2 { font-size: clamp(30px, 4vw, 44px); }
+h3 { font-size: clamp(22px, 2.6vw, 28px); }
+
+p.lead {
+  font-size: 19px;
+  color: var(--porcelain-muted);
+  max-width: 46ch;
+}
+
+.text-muted {
+  color: var(--porcelain-muted);
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14.5px;
+  border: 1px solid transparent;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--gold);
+  color: var(--ink);
+}
+.btn-primary:hover {
+  background: var(--gold-soft);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--porcelain);
+  border-color: var(--border-strong);
+}
+.btn-ghost:hover {
+  border-color: var(--gold);
+  color: var(--gold-soft);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* --- Forms --- */
+.field {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.field label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--porcelain-muted);
+  margin-bottom: 8px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  background: var(--ink-surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 13px 14px;
+  color: var(--porcelain);
+  font-family: var(--font-body);
+  font-size: 15px;
+  transition: border-color 0.15s ease;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--gold);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 130px;
+}
+
+.form-error {
+  background: rgba(224, 104, 90, 0.12);
+  border: 1px solid rgba(224, 104, 90, 0.4);
+  color: #f3b2a9;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.form-success {
+  background: rgba(124, 152, 133, 0.14);
+  border: 1px solid rgba(124, 152, 133, 0.4);
+  color: var(--sage);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* --- Card --- */
+.card {
+  background: var(--ink-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+}
+
+/* --- Grid utilities --- */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 860px) {
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr;
+  }
+  .section { padding: 64px 0; }
+}
