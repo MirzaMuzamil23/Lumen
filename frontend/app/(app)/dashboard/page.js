@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import ArcMark from "@/components/ArcMark";
 import { useAuth } from "@/lib/AuthContext";
+import { api } from "@/lib/api";
 
 const ACTIVITY = [
   { time: "2 hours ago", text: "Logged in from a new device", tag: "Security" },
@@ -10,11 +12,32 @@ const ACTIVITY = [
   { time: "3 days ago", text: "Account created", tag: "Account" },
 ];
 
-const WEEK_USAGE = [40, 65, 30, 80, 55, 90, 45]; // demo data
+const WEEK_USAGE = [40, 65, 30, 80, 55, 90, 45];
+
+const STATUS_LABEL = {
+  planning: "Planning",
+  in_progress: "In progress",
+  review: "In review",
+  completed: "Completed",
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const firstName = user?.full_name?.split(" ")[0] || "there";
+
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("lumen_token");
+    api
+      .myProjects(token)
+      .then((data) => setProjects(data.data))
+      .catch(() => {})
+      .finally(() => setProjectsLoading(false));
+  }, []);
+
+  const activeCount = projects.filter((p) => p.status !== "completed").length;
 
   return (
     <section className="section" style={{ paddingTop: 40 }}>
@@ -26,13 +49,13 @@ export default function DashboardPage() {
 
         <div className="grid-4" style={{ marginBottom: 28 }}>
           {[
-            { label: "Active projects", value: "3" },
+            { label: "Active projects", value: String(activeCount) },
             { label: "Messages sent", value: "12" },
             { label: "Days active", value: "24" },
             { label: "Plan usage", value: "68%" },
           ].map((s) => (
             <div className="card" key={s.label} style={{ padding: 24 }}>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--gold-soft)" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--gold-deep)" }}>
                 {s.value}
               </div>
               <div className="text-muted" style={{ fontSize: 13.5, marginTop: 6 }}>{s.label}</div>
@@ -46,6 +69,45 @@ export default function DashboardPage() {
           `}</style>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* My projects — real data from the backend */}
+            <div className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ fontSize: 17 }}>My projects</h3>
+                <span className="text-mono text-muted" style={{ fontSize: 12 }}>Live data</span>
+              </div>
+
+              {projectsLoading ? (
+                <div className="text-muted" style={{ fontSize: 14 }}>Loading…</div>
+              ) : projects.length === 0 ? (
+                <div className="text-muted" style={{ fontSize: 14 }}>
+                  No projects yet — your studio contact will add one once work begins.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  {projects.map((p) => (
+                    <div key={p.id}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ fontSize: 14.5 }}>{p.name}</span>
+                        <span className="text-mono text-muted" style={{ fontSize: 12 }}>
+                          {STATUS_LABEL[p.status]} · {p.progress}%
+                        </span>
+                      </div>
+                      <div style={{ height: 6, borderRadius: 20, background: "var(--ink-surface-2)", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            width: `${p.progress}%`,
+                            height: "100%",
+                            background: "linear-gradient(90deg, var(--gold-soft), var(--gold-deep))",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Weekly activity mini chart */}
             <div className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h3 style={{ fontSize: 17 }}>Weekly activity</h3>
@@ -71,6 +133,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Recent activity timeline */}
             <div className="card">
               <h3 style={{ fontSize: 17, marginBottom: 22 }}>Recent activity</h3>
               <div>
@@ -106,7 +169,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Working quick actions -> real routes now */}
             <div className="card">
               <div className="eyebrow" style={{ marginBottom: 16 }}>Quick actions</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -117,7 +179,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Notifications */}
             <div className="card">
               <div className="eyebrow" style={{ marginBottom: 16 }}>Notifications</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

@@ -82,6 +82,28 @@ const UserModel = {
       id,
     ]);
   },
+  async setResetToken(id, tokenHash, expiresAt) {
+    await pool.query(
+      `UPDATE users SET reset_token_hash = $1, reset_token_expires = $2 WHERE id = $3`,
+      [tokenHash, expiresAt, id]
+    );
+  },
+
+  async findByResetTokenHash(tokenHash) {
+    const query = `
+      SELECT * FROM users
+      WHERE reset_token_hash = $1 AND reset_token_expires > NOW()
+    `;
+    const { rows } = await pool.query(query, [tokenHash]);
+    return rows[0];
+  },
+
+  async clearResetToken(id) {
+    await pool.query(
+      `UPDATE users SET reset_token_hash = NULL, reset_token_expires = NULL WHERE id = $1`,
+      [id]
+    );
+  },
 };
 
 module.exports = UserModel;

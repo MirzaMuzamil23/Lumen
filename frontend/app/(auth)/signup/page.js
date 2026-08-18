@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import AuthCard from "@/components/AuthCard";
+import AuthSplit from "@/components/AuthSplit";
 import { api } from "@/lib/api";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,10 +19,10 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const data = await api.login(form);
+      const data = await api.signup(form);
       localStorage.setItem("lumen_token", data.token);
       localStorage.setItem("lumen_user", JSON.stringify(data.user));
-      router.push(data.user.role === "admin" ? "/admin" : "/dashboard");
+      router.push("/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -31,30 +31,34 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthCard
-      eyebrow="Welcome back"
-      title="Log in to Lumen"
-      subtitle="Enter your details to access your dashboard."
+    <AuthSplit
+      eyebrow="Create account"
+      title="Join Lumen"
+      subtitle="Set up your account in under a minute."
       footer={
         <>
-          Don't have an account? <Link href="/signup" style={{ color: "var(--gold-soft)" }}>Sign up</Link>
+          Already have an account? <Link href="/login" style={{ color: "var(--gold-deep)" }}>Log in</Link>
         </>
       }
     >
       {error && <div className="form-error">{error}</div>}
       <form onSubmit={onSubmit}>
         <div className="field">
+          <label htmlFor="fullName">Full name</label>
+          <input id="fullName" name="fullName" type="text" required value={form.fullName} onChange={onChange} placeholder="Ayesha Khan" />
+        </div>
+        <div className="field">
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" required value={form.email} onChange={onChange} placeholder="you@example.com" />
         </div>
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required value={form.password} onChange={onChange} placeholder="••••••••" />
+          <input id="password" name="password" type="password" required minLength={6} value={form.password} onChange={onChange} placeholder="At least 6 characters" />
         </div>
         <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
-          {loading ? "Logging in…" : "Log in"}
+          {loading ? "Creating account…" : "Create account"}
         </button>
       </form>
-    </AuthCard>
+    </AuthSplit>
   );
 }

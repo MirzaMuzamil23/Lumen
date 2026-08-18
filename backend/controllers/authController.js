@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const UserModel = require("../models/userModel");
 
 const signToken = (userId, role) =>
@@ -74,6 +75,68 @@ exports.login = async (req, res, next) => {
         created_at: user.created_at,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+// POST /api/auth/forgot-password
+// NOTE: this starter has no email service wired up. In real production you'd
+// email `resetUrl` to the user instead of returning it in the response.
+// For now it's returned directly so the flow is fully testable end-to-end.
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const user = await UserModel.findByEmail(email.toLowerCase());
+    if (!user) {
+      return res.json({
+        message: "If that email is registered, a reset link has been generated.",
+      });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await UserModel.setResetToken(user.id, tokenHash, expiresAt);
+
+    const resetUrl = `${process.env.CLIENT_URL || "http://localhost:3000"}/reset-password?token=${rawToken}`;
+
+    res.json({
+      message: "If that email is registered, a reset link has been generated.",
+      // Demo-only field — remove once real email delivery is wired up.
+      resetUrl,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/auth/reset-password
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and new password are required." });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters." });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await UserModel.findByResetTokenHash(tokenHash);
+    if (!user) {
+      return res.status(400).json({ message: "This reset link is invalid or has expired." });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await UserModel.updatePassword(user.id, passwordHash);
+    await UserModel.clearResetToken(user.id);
+
+    res.json({ message: "Password reset successfully. You can now log in." });
   } catch (err) {
     next(err);
   }

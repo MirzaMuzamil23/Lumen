@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
+import DonutChart from "@/components/DonutChart";
+import AdvancedBarChart from "@/components/AdvancedBarChart";
 
 function daysAgo(n) {
   const d = new Date();
@@ -53,11 +55,23 @@ export default function AdminPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [busyId, setBusyId] = useState(null);
 
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectError, setProjectError] = useState("");
+  const [projectForm, setProjectForm] = useState({ name: "", clientId: "", status: "planning", progress: 0 });
+  const [creatingProject, setCreatingProject] = useState(false);
+
   const loadUsers = async () => {
     const token = localStorage.getItem("lumen_token");
     const data = await api.listUsers(token);
     setUsers(data.data);
     setStats(data.stats);
+  };
+
+  const loadProjects = async () => {
+    const token = localStorage.getItem("lumen_token");
+    const data = await api.listAllProjects(token);
+    setProjects(data.data);
   };
 
   useEffect(() => {
@@ -70,6 +84,10 @@ export default function AdminPage() {
     loadUsers()
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+
+    loadProjects()
+      .catch((err) => setProjectError(err.message))
+      .finally(() => setProjectsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router]);
 
@@ -90,6 +108,15 @@ export default function AdminPage() {
     [users]
   );
   const adminPct = stats.total ? Math.round((stats.admins / stats.total) * 100) : 0;
+
+  const projectStatusData = useMemo(() => {
+    const labels = { planning: "Planning", in_progress: "In progress", review: "Review", completed: "Completed" };
+    const counts = { planning: 0, in_progress: 0, review: 0, completed: 0 };
+    projects.forEach((p) => {
+      if (counts[p.status] !== undefined) counts[p.status] += 1;
+    });
+    return Object.keys(labels).map((key) => ({ label: labels[key], value: counts[key] }));
+  }, [projects]);
 
   const toggleRole = async (target) => {
     setActionError("");
@@ -121,6 +148,51 @@ export default function AdminPage() {
     }
   };
 
+  const createProject = async (e) => {
+    e.preventDefault();
+    if (!projectForm.name || !projectForm.clientId) return;
+    setProjectError("");
+    setCreatingProject(true);
+    try {
+      const token = localStorage.getItem("lumen_token");
+      await api.createProject(token, {
+        name: projectForm.name,
+        clientId: Number(projectForm.clientId),
+        status: projectForm.status,
+        progress: Number(projectForm.progress),
+      });
+      setProjectForm({ name: "", clientId: "", status: "planning", progress: 0 });
+      await loadProjects();
+    } catch (err) {
+      setProjectError(err.message);
+    } finally {
+      setCreatingProject(false);
+    }
+  };
+
+  const updateProjectField = async (project, field, value) => {
+    setProjectError("");
+    try {
+      const token = localStorage.getItem("lumen_token");
+      await api.updateProject(token, project.id, { [field]: value });
+      await loadProjects();
+    } catch (err) {
+      setProjectError(err.message);
+    }
+  };
+
+  const removeProject = async (project) => {
+    if (!confirm(`Delete project "${project.name}"?`)) return;
+    setProjectError("");
+    try {
+      const token = localStorage.getItem("lumen_token");
+      await api.deleteProject(token, project.id);
+      await loadProjects();
+    } catch (err) {
+      setProjectError(err.message);
+    }
+  };
+
   if (!user || user.role !== "admin") {
     return (
       <section className="section">
@@ -144,44 +216,34 @@ export default function AdminPage() {
 
         <div className="grid-3" style={{ marginBottom: 24 }}>
           <div className="card">
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--gold-soft)" }}>{stats.total}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--gold-deep)" }}>{stats.total}</div>
             <div className="text-muted" style={{ fontSize: 13.5, marginTop: 6 }}>Total users</div>
           </div>
           <div className="card">
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--gold-soft)" }}>{stats.admins}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--gold-deep)" }}>{stats.admins}</div>
             <div className="text-muted" style={{ fontSize: 13.5, marginTop: 6 }}>Admins</div>
           </div>
           <div className="card">
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--gold-soft)" }}>{stats.regular}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--gold-deep)" }}>{stats.regular}</div>
             <div className="text-muted" style={{ fontSize: 13.5, marginTop: 6 }}>Regular users</div>
           </div>
         </div>
 
         <div className="grid-2" style={{ marginBottom: 24, gap: 24 }}>
           <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ fontSize: 16 }}>Signups — last 7 days</h3>
-              <span className="text-mono text-muted" style={{ fontSize: 11 }}>Live data</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 90 }}>
-              {signupSeries.map((b, i) => (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                  <div
-                    title={`${b.count} signups`}
-                    style={{
-                      width: "100%",
-                      height: `${Math.max(6, (b.count / maxSignups) * 100)}%`,
-                      borderRadius: 3,
-                      background: b.count > 0 ? "var(--gold)" : "var(--ink-surface-2)",
-                      border: "1px solid var(--border-strong)",
-                    }}
-                  />
-                  <span className="text-mono text-muted" style={{ fontSize: 10 }}>
-                    {b.day.toLocaleDateString(undefined, { weekday: "short" })}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <AdvancedBarChart
+              data={signupSeries.map((b) => ({
+                label: b.day.toLocaleDateString(undefined, { weekday: "short" }),
+                value: b.count,
+              }))}
+            />
+            <DonutChart
+              data={[
+                { label: "Admins", value: stats.admins, color: "#c9932a" },
+                { label: "Regular users", value: stats.regular, color: "#5c7d68" },
+              ]}
+              size={140}
+            />
           </div>
 
           <div className="card">
@@ -289,7 +351,7 @@ export default function AdminPage() {
                             padding: "4px 10px",
                             borderRadius: 20,
                             border: "1px solid var(--border-strong)",
-                            color: u.role === "admin" ? "var(--gold-soft)" : "var(--sage)",
+                            color: u.role === "admin" ? "var(--gold-deep)" : "var(--sage)",
                           }}
                         >
                           {u.role.toUpperCase()}
@@ -311,7 +373,7 @@ export default function AdminPage() {
                           </button>
                           <button
                             className="btn btn-ghost"
-                            style={{ padding: "6px 12px", fontSize: 12, color: isSelf ? undefined : "#e0685a" }}
+                            style={{ padding: "6px 12px", fontSize: 12, color: isSelf ? undefined : "var(--danger)" }}
                             disabled={isSelf || isBusy}
                             onClick={() => removeUser(u)}
                             title={isSelf ? "You can't delete your own account" : ""}
@@ -323,6 +385,164 @@ export default function AdminPage() {
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16 }}>Project pipeline</h3>
+            <span className="text-mono text-muted" style={{ fontSize: 11 }}>{projects.length} total</span>
+          </div>
+          <AdvancedBarChart data={projectStatusData} color="#5c7d68" height={130} />
+        </div>
+
+        {/* Projects section — client project tracking */}
+        <div style={{ marginTop: 48, marginBottom: 24 }}>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Client work</div>
+          <h2 style={{ fontSize: 24 }}>Projects</h2>
+        </div>
+
+        {projectError && <div className="form-error">{projectError}</div>}
+
+        <div className="card" style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, marginBottom: 18 }}>New project</h3>
+          <form onSubmit={createProject} className="form-grid-5">
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Client</label>
+              <select
+                value={projectForm.clientId}
+                onChange={(e) => setProjectForm({ ...projectForm, clientId: e.target.value })}
+                required
+                style={{
+                  width: "100%",
+                  background: "var(--input-bg)",
+                  border: "1px solid var(--border-strong)",
+                  borderRadius: "var(--radius)",
+                  padding: "13px 14px",
+                  fontSize: 14.5,
+                  color: "var(--porcelain)",
+                }}
+              >
+                <option value="">Select a user…</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name} ({u.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Status</label>
+              <select
+                value={projectForm.status}
+                onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}
+                style={{
+                  width: "100%",
+                  background: "var(--input-bg)",
+                  border: "1px solid var(--border-strong)",
+                  borderRadius: "var(--radius)",
+                  padding: "13px 14px",
+                  fontSize: 14.5,
+                  color: "var(--porcelain)",
+                }}
+              >
+                <option value="planning">Planning</option>
+                <option value="in_progress">In progress</option>
+                <option value="review">Review</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Progress %</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={projectForm.progress}
+                onChange={(e) => setProjectForm({ ...projectForm, progress: e.target.value })}
+              />
+            </div>
+            <button className="btn btn-primary" type="submit" disabled={creatingProject} style={{ height: 47 }}>
+              {creatingProject ? "Adding…" : "Add"}
+            </button>
+          </form>
+        </div>
+
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          {projectsLoading ? (
+            <div className="text-muted" style={{ padding: 32 }}>Loading projects…</div>
+          ) : projects.length === 0 ? (
+            <div className="text-muted" style={{ padding: 32 }}>No projects yet — add one above.</div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {["Project", "Client", "Status", "Progress", ""].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "14px 20px",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 11.5,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        color: "var(--porcelain-muted)",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {projects.map((p, i) => (
+                  <tr key={p.id} style={{ borderBottom: i < projects.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <td style={{ padding: "14px 20px", fontSize: 14.5 }}>{p.name}</td>
+                    <td style={{ padding: "14px 20px", fontSize: 14, color: "var(--porcelain-muted)" }}>
+                      {p.client_name}
+                    </td>
+                    <td style={{ padding: "14px 20px" }}>
+                      <select
+                        value={p.status}
+                        onChange={(e) => updateProjectField(p, "status", e.target.value)}
+                        className="text-mono"
+                        style={{
+                          fontSize: 12,
+                          padding: "5px 10px",
+                          borderRadius: 20,
+                          border: "1px solid var(--border-strong)",
+                          background: "var(--input-bg)",
+                          color: "var(--gold-deep)",
+                        }}
+                      >
+                        <option value="planning">Planning</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="review">Review</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: "14px 20px", minWidth: 160 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ flex: 1, height: 6, borderRadius: 20, background: "var(--ink-surface-2)", overflow: "hidden" }}>
+                          <div style={{ width: `${p.progress}%`, height: "100%", background: "linear-gradient(90deg, var(--gold-soft), var(--gold-deep))" }} />
+                        </div>
+                        <span className="text-mono text-muted" style={{ fontSize: 11.5 }}>{p.progress}%</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "14px 20px" }}>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ padding: "6px 12px", fontSize: 12, color: "var(--danger)" }}
+                        onClick={() => removeProject(p)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}

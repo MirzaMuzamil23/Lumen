@@ -17,6 +17,9 @@ export default function Footer() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <Link href="/about" className="text-muted">About</Link>
               <Link href="/services" className="text-muted">Services</Link>
+              <Link href="/blog" className="text-muted">Blog</Link>
+              <Link href="/careers" className="text-muted">Careers</Link>
+              <Link href="/faq" className="text-muted">FAQ</Link>
               <Link href="/pricing" className="text-muted">Pricing</Link>
               <Link href="/contact" className="text-muted">Contact</Link>
             </div>

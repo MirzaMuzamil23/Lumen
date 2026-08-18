@@ -1,10 +1,7 @@
 "use client";
 
-const INVOICES = [
-  { id: "INV-1042", date: "2026-07-01", amount: "$4,800.00", status: "Paid" },
-  { id: "INV-1031", date: "2026-06-01", amount: "$4,800.00", status: "Paid" },
-  { id: "INV-1019", date: "2026-05-01", amount: "$4,800.00", status: "Paid" },
-];
+import Link from "next/link";
+import { INVOICES, formatCurrency } from "@/lib/invoicesData";
 
 const statusColor = (s) => (s === "Paid" ? "var(--sage)" : "var(--gold)");
 
@@ -19,10 +16,11 @@ export default function InvoicesPage() {
         </p>
 
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="table-scroll">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Invoice", "Date", "Amount", "Status"].map((h) => (
+                {["Invoice", "Date", "Amount", "Status", ""].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -45,14 +43,20 @@ export default function InvoicesPage() {
                 <tr key={inv.id} style={{ borderBottom: i < INVOICES.length - 1 ? "1px solid var(--border)" : "none" }}>
                   <td style={{ padding: "16px 24px", fontFamily: "var(--font-mono)", fontSize: 14 }}>{inv.id}</td>
                   <td style={{ padding: "16px 24px", fontSize: 14 }}>{inv.date}</td>
-                  <td style={{ padding: "16px 24px", fontSize: 14 }}>{inv.amount}</td>
+                  <td style={{ padding: "16px 24px", fontSize: 14 }}>{formatCurrency(inv.amount)}</td>
                   <td style={{ padding: "16px 24px" }}>
                     <span style={{ fontSize: 13, color: statusColor(inv.status) }}>● {inv.status}</span>
+                  </td>
+                  <td style={{ padding: "16px 24px" }}>
+                    <Link href={`/dashboard/invoices/${inv.id}`} className="btn btn-ghost" style={{ padding: "6px 14px", fontSize: 12.5 }}>
+                      View
+                    </Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </section>

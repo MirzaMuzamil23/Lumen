@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import AuthCard from "@/components/AuthCard";
+import AuthSplit from "@/components/AuthSplit";
 import { api } from "@/lib/api";
 
-export default function SignupPage() {
+export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,10 +19,10 @@ export default function SignupPage() {
     setError("");
     setLoading(true);
     try {
-      const data = await api.signup(form);
+      const data = await api.login(form);
       localStorage.setItem("lumen_token", data.token);
       localStorage.setItem("lumen_user", JSON.stringify(data.user));
-      router.push("/dashboard");
+      router.push(data.user.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -31,34 +31,35 @@ export default function SignupPage() {
   };
 
   return (
-    <AuthCard
-      eyebrow="Create account"
-      title="Join Lumen"
-      subtitle="Set up your account in under a minute."
+    <AuthSplit
+      eyebrow="Welcome back"
+      title="Log in to Lumen"
+      subtitle="Enter your details to access your dashboard."
       footer={
         <>
-          Already have an account? <Link href="/login" style={{ color: "var(--gold-soft)" }}>Log in</Link>
+          Don't have an account? <Link href="/signup" style={{ color: "var(--gold-deep)" }}>Sign up</Link>
         </>
       }
     >
       {error && <div className="form-error">{error}</div>}
       <form onSubmit={onSubmit}>
         <div className="field">
-          <label htmlFor="fullName">Full name</label>
-          <input id="fullName" name="fullName" type="text" required value={form.fullName} onChange={onChange} placeholder="Ayesha Khan" />
-        </div>
-        <div className="field">
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" required value={form.email} onChange={onChange} placeholder="you@example.com" />
         </div>
         <div className="field">
-          <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required minLength={6} value={form.password} onChange={onChange} placeholder="At least 6 characters" />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label htmlFor="password" style={{ marginBottom: 0 }}>Password</label>
+            <Link href="/forgot-password" className="text-mono" style={{ fontSize: 12, color: "var(--gold-deep)" }}>
+              Forgot password?
+            </Link>
+          </div>
+          <input id="password" name="password" type="password" required value={form.password} onChange={onChange} placeholder="••••••••" style={{ marginTop: 8 }} />
         </div>
         <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
-          {loading ? "Creating account…" : "Create account"}
+          {loading ? "Logging in…" : "Log in"}
         </button>
       </form>
-    </AuthCard>
+    </AuthSplit>
   );
 }

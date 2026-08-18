@@ -1,3 +1,4 @@
+const projectRoutes = require("./routes/projectRoutes");
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -21,6 +22,8 @@ app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/projects", projectRoutes);
+
 
 // ---- 404 + error handling ----
 app.use(notFound);
