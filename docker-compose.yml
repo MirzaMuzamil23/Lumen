@@ -4,22 +4,21 @@ services:
     container_name: lumen_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: premium_website
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-lumen_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env mein set karo}
+      POSTGRES_DB: ${POSTGRES_DB:-premium_website}
     volumes:
       - lumen_pgdata:/var/lib/postgresql/data
-      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   backend:
     build: ./backend
+    image: ${IMAGE_PREFIX:-lumen}/lumen-backend:${TAG:-latest}
     container_name: lumen_backend
     restart: unless-stopped
     depends_on:
@@ -30,24 +29,32 @@ services:
       NODE_ENV: production
       PGHOST: db
       PGPORT: 5432
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGDATABASE: premium_website
-      JWT_SECRET: change_this_to_a_long_random_secret
+      PGUSER: ${POSTGRES_USER:-lumen_app}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-premium_website}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET .env mein set karo}
       JWT_EXPIRES_IN: 7d
-      CLIENT_URL: http://localhost:3000
+      CLIENT_URL: ${CLIENT_URL:?CLIENT_URL .env mein set karo}
     ports:
       - "4000:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:4000/api
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL .env mein set karo}
+    image: ${IMAGE_PREFIX:-lumen}/lumen-frontend:${TAG:-latest}
     container_name: lumen_frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"
 
