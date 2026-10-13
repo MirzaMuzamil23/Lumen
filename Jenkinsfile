@@ -4,6 +4,7 @@ pipeline {
     environment {
         IMAGE_TAG      = "${env.BUILD_NUMBER}"
         PUBLIC_API_URL = 'http://184.193.139.186:4000/api'
+        APP_HOST       = 'ubuntu@184.193.139.186'
     }
 
     stages {
@@ -45,6 +46,30 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to app-server') {
+            steps {
+                sshagent(credentials: ['app-server-ssh']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=accept-new ${APP_HOST} \
+                          "cd ~/Lumen && git pull origin main \
+                           && TAG=${IMAGE_TAG} docker compose pull \
+                           && TAG=${IMAGE_TAG} docker compose up -d --no-build \
+                           && docker compose ps"
+                    '''
+                }
+            }
+        }
+
+        stage('Smoke test') {
+            steps {
+                sshagent(credentials: ['app-server-ssh']) {
+                    sh '''
+                        ssh ${APP_HOST} "curl -fs --retry 12 --retry-delay 5 --retry-connrefused http://localhost:4000/api/health"
+                    '''
+                }
+            }
+        }
     }
 
     post {
@@ -52,7 +77,7 @@ pipeline {
             sh 'docker image prune -f'
         }
         success {
-            echo 'Pipeline pass hui'
+            echo 'Pipeline pass hui, naya version live hai'
         }
         failure {
             echo 'Pipeline fail hui, console output dekho'
