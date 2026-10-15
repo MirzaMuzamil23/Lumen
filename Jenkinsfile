@@ -54,6 +54,7 @@ pipeline {
                           -v "$WORKSPACE":/usr/src \
                           sonarsource/sonar-scanner-cli:latest \
                           -Dsonar.projectKey=lumen \
+                          -Dsonar.working.directory=/tmp/sonar-work \
                           -Dsonar.projectName=Lumen \
                           -Dsonar.sources=backend,frontend \
                           -Dsonar.exclusions=**/node_modules/**,**/.next/** \
