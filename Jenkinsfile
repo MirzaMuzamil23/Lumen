@@ -5,6 +5,8 @@ pipeline {
         IMAGE_TAG      = "${env.BUILD_NUMBER}"
         PUBLIC_API_URL = 'http://184.193.139.186:4000/api'
         APP_HOST       = 'ubuntu@184.193.139.186'
+        TRIVY_EXIT     = '0'
+        SONAR_GATE     = 'false'
     }
 
     stages {
@@ -12,6 +14,53 @@ pipeline {
             steps {
                 checkout scm
                 sh 'git log -1 --oneline'
+            }
+        }
+
+        stage('Secrets scan (Gitleaks)') {
+            steps {
+                sh '''
+                    docker run --rm -u "$(id -u):$(id -g)" \
+                      -v "$WORKSPACE":/repo \
+                      zricethezav/gitleaks:latest \
+                      detect --source /repo --no-banner --redact --verbose --exit-code 1
+                '''
+            }
+        }
+
+        stage('Dependency and config scan (Trivy)') {
+            steps {
+                sh '''
+                    docker run --rm \
+                      -v "$WORKSPACE":/src \
+                      -v trivy-cache:/root/.cache/ \
+                      aquasec/trivy:latest fs /src \
+                      --scanners vuln,misconfig \
+                      --severity HIGH,CRITICAL \
+                      --exit-code ${TRIVY_EXIT}
+                '''
+            }
+        }
+
+        stage('Code analysis (SonarQube)') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        docker run --rm -u "$(id -u):$(id -g)" \
+                          --network sonar-net \
+                          -e SONAR_HOST_URL=http://sonarqube:9000 \
+                          -e SONAR_TOKEN="$SONAR_TOKEN" \
+                          -e SONAR_USER_HOME=/tmp/.sonar \
+                          -v "$WORKSPACE":/usr/src \
+                          sonarsource/sonar-scanner-cli:latest \
+                          -Dsonar.projectKey=lumen \
+                          -Dsonar.projectName=Lumen \
+                          -Dsonar.sources=backend,frontend \
+                          -Dsonar.exclusions=**/node_modules/**,**/.next/** \
+                          -Dsonar.qualitygate.wait=${SONAR_GATE} \
+                          -Dsonar.qualitygate.timeout=300
+                    '''
+                }
             }
         }
 
@@ -24,6 +73,23 @@ pipeline {
         stage('Build frontend image') {
             steps {
                 sh 'docker build -t lumen-frontend:${IMAGE_TAG} --build-arg NEXT_PUBLIC_API_URL=${PUBLIC_API_URL} ./frontend'
+            }
+        }
+
+        stage('Image scan (Trivy)') {
+            steps {
+                sh '''
+                    for svc in backend frontend; do
+                        echo "===== Scanning lumen-$svc:${IMAGE_TAG} ====="
+                        docker run --rm \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -v trivy-cache:/root/.cache/ \
+                          aquasec/trivy:latest image \
+                          --severity HIGH,CRITICAL \
+                          --exit-code ${TRIVY_EXIT} \
+                          lumen-$svc:${IMAGE_TAG}
+                    done
+                '''
             }
         }
 
