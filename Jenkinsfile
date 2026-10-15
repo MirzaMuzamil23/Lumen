@@ -53,7 +53,7 @@ pipeline {
                           -e SONAR_USER_HOME=/tmp/.sonar \
                           -v "$WORKSPACE":/usr/src \
                           sonarsource/sonar-scanner-cli:latest \
-                          -Dsonar.projectKey=lumen \
+                          -Dsonar.projectKey=Lumen \
                           -Dsonar.working.directory=/tmp/sonar-work \
                           -Dsonar.projectName=Lumen \
                           -Dsonar.sources=backend,frontend \
